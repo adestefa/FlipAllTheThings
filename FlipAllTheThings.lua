@@ -71,40 +71,56 @@
 	WEAPON_HEAVYSHOTGUN
 	WEAPON_MARKSMANRIFLE
 	
-	
+	<b>update</b>
+	v1.1 - 12/22/2015
+		- Added flip type (peds, tables, dumpsters)
+		- Added menu to toggle type
 	]]--
 
 local FTT = {};
 --  Game Settings
 -- =================================
 FTT.settings = {};
+FTT.settings["flip_type"] = "peds";		-- Flip Type:  small (tables), big(dumpsters, boats), none (flip peds);
 FTT.settings["cops_ignore"] = false;	-- Cops will show up when false
 FTT.settings["key_start"]=46; 			-- Start/Stop mod key ('del')
+FTT.settings["key_peds"]=74				-- Flip peds ("J")
+FTT.settings["key_small"]=75;			-- Flip tables ("K")
+FTT.settings["key_big"]=76;				-- Flip type mod key peds only ('L')
 FTT.settings["max_objects"] = 100;		-- Slower machines should use a lower number (will delete all objects when this is reached or could crash game when too many)
+-- ======== Waring, changing may have unintended consequences! make a backup! =============
 FTT.settings["force_height"] = 8;		-- Height objects will be flipped
 FTT.settings["force_pos_x"] = 1;		-- Direction they will be flipped on x axis
 FTT.settings["force_pos_y"] = 1;		-- Direction they will be flipped on y axis
 FTT.objects = {};
--- ============ NOTES ===========================================================
--- list of objects spawned on ped death 
+-- ============ NOTES ===============================
+-- list of objects spawned on NPC death 
 -- see "list_of_objects.txt" for more names. Note: index must start at 1 
--- Tip: uncomment the dumptser alone, to mimic the original Death Race gameplay.
--- ========= Fun objects alone =========
---FTT.objects[1] = "prop_dumpster_3a";
---FTT.objects[1] = "prop_juicestand";
---FTT.objects[1] = "prop_coffin_02b";
--- ============Flip the Tables==========
-FTT.objects[1] = "prop_t_coffe_table";
-FTT.objects[2] = "prop_table_04";
-FTT.objects[3] = "prop_table_06";
-FTT.objects[4] = "prop_tri_table_01";
+-- ============Flip the Tables=======================
+function FTT.setObjects()
+	if(FTT.settings["flip_type"] == "big") then
+		-- Add/remove Large objects here
+		FTT.objects[1] = "prop_dumpster_3a";
+		FTT.objects[2] = "p_dumpster_t";
+		FTT.objects[3] = "prop_cs_dumpster_01a";
+		FTT.objects[4] = "prop_cs_ironing_board";
+		FTT.objects[5] = "prop_swiss_ball_01";
+	elseif(FTT.settings["flip_type"] == "small") then
+		-- Add/remove small objects here
+		FTT.objects[1] = "prop_t_coffe_table";
+		FTT.objects[2] = "prop_table_04";
+		FTT.objects[3] = "prop_table_06";
+		FTT.objects[4] = "prop_tri_table_01";
+		FTT.objects[5] = "prop_swiss_ball_01";
+	end
+end
 -- ==================================================
 -- ==================================================
 -- ===== EDIT BELOW AT OWN RISK! ====================
 -- ==================================================
 -- ==================================================
 FTT.data = {};
-FTT.data["version"] = "1.0";
+FTT.data["version"] = "1.1";
 FTT.data["seenPeds"] = {};
 FTT.data["seenPedSkins"] = {};
 FTT.data["blips"] = {};
@@ -216,7 +232,7 @@ function FTT.spawnVeh(modelName)
 	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(skin);
 end
 function FTT.setupGame()
-	print("Flip the tables v"..FTT.data["version"]);
+	print("Flip All The Things v"..FTT.data["version"].." by CoreLogic");
 	-- let's initialize the wave counter delay (how long between Dank spawns) setting to the current level
 	FTT.data["setup"] = true;
 	FTT.data["game_over"] = false;
@@ -279,13 +295,36 @@ function FTT.tick()
 		FTT.startkey_action_handler();
 		wait(1000);
 	end
+	
+	if(get_key_pressed(FTT.settings["key_peds"])) then -- "k"
+		FTT.settings["flip_type"] = "peds";
+		FTT.objects = {};
+		wait(1000);
+	end
+	if(get_key_pressed(FTT.settings["key_small"])) then -- "k"
+		FTT.settings["flip_type"] = "small";
+		FTT.setObjects();
+		wait(1000);
+	end
+	if(get_key_pressed(FTT.settings["key_big"])) then -- "L"
+		FTT.settings["flip_type"] = "big";
+		FTT.setObjects();
+		wait(1000);
+	end
+
 	-- Play Game
 	-- ==============
 	if(not FTT.data["playGame"]) then
 		FTT.drawText(" [del] Flip All The Things! v"..FTT.data["version"].." - by CoreLogic", 0.80, 0.0005, 0.24, false, 0,  255, 255, 255);
 		--ENTITY.FREEZE_ENTITY_POSITION(PLAYER.PLAYER_PED_ID() , false);
 	else
-		FTT.drawText(" [del] off", 0.80, 0.0005, 0.24, false, 0,  0, 0, 0);
+		if(FTT.settings["flip_type"] == "big") then
+			FTT.drawText(" [del] off - Type: Dumpsters", 0.80, 0.0005, 0.24, false, 0,  255, 0, 0);
+		elseif(FTT.settings["flip_type"] == "small") then
+			FTT.drawText(" [del] off - Type: Tables", 0.80, 0.0005, 0.24, false, 0,  255, 0, 0);
+		else
+			FTT.drawText(" [del] off - Type: Peds", 0.80, 0.0005, 0.24, false, 0,  255, 0, 0);
+		end
 	-- START
 	-- ==================	
 	-- test if player exists (and is not dead)
@@ -318,6 +357,11 @@ function FTT.tick()
 			-- number of objects spawned by dead peds
 			local num_objects = #FTT.data["objects"];
 			FTT.drawText("O:"..num_objects, 0.94, 0.56, 0.26, true, 0, 255, 255, 0);
+				
+			FTT.drawText("[J] Peds", 0.71, 0.0005, 0.26, false, 0, 255, 255, 0);
+			FTT.drawText("[K] Tables", 0.73, 0.0005, 0.26, false, 0, 255, 255, 0);
+			FTT.drawText("[L] Dumpsters", 0.75, 0.0005, 0.26, false, 0, 255, 255, 0);
+		
 			
 		end	-- player exists and not dead
 	end -- playgame
@@ -334,7 +378,7 @@ function FTT.cleanAll()
 end
 function FTT.unload()
 	FTT.cleanAll();
-	print("Flip All The Things.");
+	print("Flip All The Things. - by CoreLogic");
 end
 function FTT.onload()
 	print("I live...");
